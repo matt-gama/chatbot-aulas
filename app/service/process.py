@@ -19,6 +19,9 @@ def process_webhook_data(data: dict):
         if not ia_infos:
             raise(Exception("IA Não foi localizada com esse telefone")) 
 
+        if ia_infos.status != True:
+            raise(Exception(f"IA {ia_infos.name} Esta desativada, interceptando mensagem"))
+
         # Extraindo conteudo da mensagem
         message_id = data["data"]["key"]["id"]
         message_type = data["data"]["messageType"]
@@ -41,10 +44,14 @@ def process_webhook_data(data: dict):
 
             # Gerando resposta com LLM
             historico = lead_db.message
+            resume_lead = lead_db.resume
             api_key = ia_infos.ia_config.credentials.get("api_key")
             ai_model = ia_infos.ia_config.credentials.get("ai_model", "")
-            system_prompt = ia_infos.active_prompt.prompt_text
-            llm = IAResponse(api_key, ai_model, system_prompt)
+            system_prompt = ia_infos.active_prompt
+            if not system_prompt:
+                raise(Exception(f"Nenhum prompt ativo para a ia {ia_infos.name}, interceptando mensagem"))
+
+            llm = IAResponse(api_key, ai_model, system_prompt.prompt_text, resume_lead)
             response_lead = llm.generate_response(message_content, historico)
             if not response_lead:
                 raise(Exception("Erro ao gerar resposta da llm"))
@@ -61,13 +68,27 @@ def process_webhook_data(data: dict):
                 response_canal = send_message(ia_name, lead_phone, msg, delay)
                 if response_canal.get("status_code") not in [200, 201]:
                     raise(Exception(f"Erro ao enviar mensagem ao lead > {msg}"))
+
+            # Verificar quantidade de interações
+            resumo = None
+            total_interacoes = 0
+            ultimo_role = None
+            for mensagem in historico:
+                if mensagem["role"] != ultimo_role:
+                    total_interacoes += 1
+                    ultimo_role = mensagem["role"]
+
+            print("Total de interações real:", total_interacoes)
+            if total_interacoes % 20 == 0:
+                print(f"Interações bateu {total_interacoes} criando resumo")
+                resumo = llm.generate_resume(historico)
                 
             # Atualizando no banco de dados
             message_ia = {
                 "role":"assistant",
                 "content":response_lead
             }
-            lead_updated =  lead_manioulations.update_lead(lead_db.id, message_ia)
+            lead_updated =  lead_manioulations.update_lead(lead_db.id, message_ia, resumo)
             if not lead_updated:
                 raise(Exception(f"Ocorreu algum problema ao atualizar lead : {lead_db.id}"))
             
