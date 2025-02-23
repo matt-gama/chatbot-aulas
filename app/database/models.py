@@ -12,6 +12,7 @@ class IA(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     phone_number = Column(String, nullable=False)
+    status = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -21,6 +22,7 @@ class IA(Base):
 
     @property
     def active_prompt(self):
+
         active = [p for p in self.prompts if p.is_active]
         return active[0] if active else None
     
@@ -69,6 +71,7 @@ class Lead(Base):
     phone = Column(String, nullable=True, unique=True)
     # O campo 'message' armazenará uma lista de dicionários
     message = Column(MutableList.as_mutable(JSON), nullable=False)
+    resume = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

@@ -22,7 +22,7 @@ def insert_example_data():
         # Inserindo configuração com credenciais criptografadas
         # Exemplo de JSON de credenciais
         credentials = {
-            "api_key": "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",
+            "api_key": "apiKey",
             "api_secret": "openai"
         }
         encrypted_credentials = encrypt_data(credentials)

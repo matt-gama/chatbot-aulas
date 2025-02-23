@@ -37,7 +37,7 @@ def filter_lead(phone:str, message:list) -> Lead:
 
     return None
 
-def update_lead(lead_id:int, message:list) -> bool:
+def update_lead(lead_id:int, message:list, resumo:str) -> bool:
     db = init_db()
     if not db:
         raise(Exception("Não consegui conectar com database"))
@@ -48,6 +48,9 @@ def update_lead(lead_id:int, message:list) -> bool:
             print(f"Nenhum Lead encontrada com esse id {lead_id}")
             return False
         
+        if resumo:
+            lead.resume = resumo
+
         historico = lead.message
         if not historico:
             historico = []
