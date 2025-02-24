@@ -79,9 +79,12 @@ def process_webhook_data(data: dict):
                     ultimo_role = mensagem["role"]
 
             print("Total de interações real:", total_interacoes)
-            if total_interacoes % 20 == 0:
-                print(f"Interações bateu {total_interacoes} criando resumo")
-                resumo = llm.generate_resume(historico)
+            
+            for n in range(20, 26):
+                if total_interacoes % n == 0:
+                    print(f"Interações bateu {total_interacoes} criando resumo")
+                    resumo = llm.generate_resume(historico)
+                    break  # Sai do loop assim que encontrar um número divisível
                 
             # Atualizando no banco de dados
             message_ia = {
