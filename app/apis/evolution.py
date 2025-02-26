@@ -22,6 +22,7 @@ def processar_imagem(instance, message_id, ia_infos) -> str:
     imagem_transcript = "Imagem enviada : Não consegui transcrever essa imagem fale para o usuário que sua internet esta ruim e que não pode baixar a imagem"
 
     try:
+        print("iniciando processo")
         url = host+'chat/getBase64FromMediaMessage/'+instance
         body = {
                 "message": {
