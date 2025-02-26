@@ -125,7 +125,7 @@ def send_message(instance:str, lead_phone:str, message:str, delay:int) -> dict:
 def post_request(url:str, body:dict, max_retries:int=5, wait_seconds:int=5) -> dict:
     # Inicializando variáveis
     attempt = 0
-    lead = body["number"]
+    lead = body.get("number")
     response_post = {"status_code": None, "response":None}
 
     headers = {
@@ -147,7 +147,7 @@ def post_request(url:str, body:dict, max_retries:int=5, wait_seconds:int=5) -> d
                 
         # Verifica se o status code é sucesso
         if response.status_code in [200, 201]:
-            print(f"Mensagem enviada com sucesso pela EVOLUTION para o lead » {lead}")
+            print(f"Mensagem enviada com sucesso pela EVOLUTION para o lead {lead}")
             response_post = {"status_code": response.status_code, "response": response_return}
             return response_post
 
