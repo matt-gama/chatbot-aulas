@@ -114,6 +114,7 @@ def processar_mensagem(data, instance, message_id, message_type, ia_infos):
     elif message_type == "audioMessage":
         print("Áudio identificado!")
         return processar_audio(instance, message_id, ia_infos)
+    
     elif message_type == "documentWithCaptionMessage":
         print("Documento identificado!")
         type_file = data.get("data").get("message").get("documentWithCaptionMessage").get("message").get("documentMessage").get("mimetype").split("/")[1]
