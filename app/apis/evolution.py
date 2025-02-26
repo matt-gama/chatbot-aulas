@@ -112,6 +112,9 @@ def processar_audio(instance, message_id, ia_infos) -> str:
                     file=audio_file
                 )
                 audio_transcript = f"Audio enviado : {response.text}"
+        else:
+            raise(Exception(f"Ocorreu algum erro ao coletar dados da api status code : {data.get("status_code")}"))
+            
     except Exception as ex:
         print(f"Erro ao transcrever audio : {ex}")
 
