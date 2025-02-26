@@ -46,6 +46,8 @@ orjson==3.10.15
 packaging==24.2
 preshed==3.0.9
 propcache==0.3.0
+pydub
+openai
 psycopg2-binary==2.9.10
 pt_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/pt_core_news_sm-3.8.0/pt_core_news_sm-3.8.0-py3-none-any.whl#sha256=c304fa04db3af73cd08a250feacf560506e15a2ec2469bd1b09f06847f6b455c
 pycparser==2.22
