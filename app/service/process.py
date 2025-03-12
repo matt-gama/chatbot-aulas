@@ -55,7 +55,7 @@ def process_webhook_data(data: dict):
             response_lead = llm.generate_response(message_content, historico)
             if not response_lead:
                 raise(Exception("Erro ao gerar resposta da llm"))
-
+            
             # Tratar mensagem da IA
             list_messages_to_send = quebrar_mensagens(response_lead)
             if not list_messages_to_send:

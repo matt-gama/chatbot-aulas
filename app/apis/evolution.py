@@ -1,6 +1,7 @@
 import os
 import time
 import openai
+import base64
 import requests
 
 from langchain_openai import OpenAI
@@ -37,20 +38,36 @@ def processar_imagem(instance, message_id, ia_infos) -> str:
             image_base64 = data.get("response")['base64']
             # Enviar para OpenAI
             api_key = ia_infos.ia_config.credentials.get("api_key")
-            openai_model = ChatOpenAI(model="gpt-4-vision-preview", openai_api_key=api_key)
 
-            imagem_transcript = openai_model.invoke([
-                {
-                    "type": "image_url",
-                    "image_url": f"data:image/png;base64,{image_base64}"
-                },
-                {
-                    "type": "text",
-                    "text": "Faça uma interpretação da imagem enviada"
-                }
-            ])
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
+            }
+
+            payload = {
+                "model": os.getenv("MODEL_ANALYZE_IMAGE_OPENAI", "gpt-4o"),
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": "Faça uma interpretação da imagem enviada"},
+                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}
+                        ]
+                    }
+                ],
+                "max_tokens": 500
+            }
+            
+            url = "https://api.openai.com/v1/chat/completions"
+            response = requests.post(url, headers=headers, json=payload, timeout=15)
+            if not response:
+                raise(Exception)
+            
+            response_json = response.json()
+            imagem_transcript = response_json['choices'][0]['message']['content']
             print(imagem_transcript)
             imagem_transcript += "Imagem enviada : "+ imagem_transcript
+
     except Exception as ex:
         print(f"Erro ao transcrever imagem : {ex}")
 
@@ -59,10 +76,11 @@ def processar_imagem(instance, message_id, ia_infos) -> str:
 def processar_audio(instance, message_id, ia_infos) -> str:
     print("Processando Audio")
     audio_transcript = "Audio enviado : Não consegui transcrever esse audio fale para o usuário que sua internet esta ruim e que não pode ouvir"
+    timestamp = str(time.time())
+    audio_path = f"audio_{timestamp}.ogg"
+    mp3_path = f"audio_{timestamp}.mp3"
     try:
-        timestamp = str(time.time())
-        audio_path = f"audio_{timestamp}.ogg"
-        mp3_path = f"audio_{timestamp}.mp3"
+        
 
         url = host+'chat/getBase64FromMediaMessage/'+instance
 
@@ -76,8 +94,9 @@ def processar_audio(instance, message_id, ia_infos) -> str:
 
         if data.get("status_code") in [200, 201]:
             audio_base64 = data.get("response")['base64']
+            audio_bytes = base64.b64decode(audio_base64)
             with open(audio_path, 'wb') as audio_file:
-                audio_file.write(audio_base64)
+                audio_file.write(audio_bytes)
 
             def convert_ogg_to_mp3(input_path, output_path):
                 audio = AudioSegment.from_ogg(input_path)
@@ -93,8 +112,17 @@ def processar_audio(instance, message_id, ia_infos) -> str:
                     file=audio_file
                 )
                 audio_transcript = f"Audio enviado : {response.text}"
+        else:
+            raise(Exception(f"Ocorreu algum erro ao coletar dados da api status code : {data.get("status_code")}"))
     except Exception as ex:
         print(f"Erro ao transcrever audio : {ex}")
+
+    try:
+        os.remove(audio_path)
+        if os.path.exists(mp3_path):
+            os.remove(mp3_path)
+    except:
+        pass
 
     return audio_transcript
 
@@ -109,14 +137,9 @@ def send_message(instance:str, lead_phone:str, message:str, delay:int) -> dict:
     url = host+'message/sendText/'+instance
     body = {
         "number": lead_phone,
-        "options": {
-            "delay": int(delay)*1000,
-            "presence": "composing",
-            "linkPreview": False
-        },
-        "textMessage": {
-            "text": str(message)
-        }
+        "text": str(message),
+        "delay": int(delay)*1000,
+        "linkPreview": True
     }
     
     data = post_request(url, body)
@@ -125,7 +148,7 @@ def send_message(instance:str, lead_phone:str, message:str, delay:int) -> dict:
 def post_request(url:str, body:dict, max_retries:int=5, wait_seconds:int=5) -> dict:
     # Inicializando variáveis
     attempt = 0
-    lead = body["number"]
+    lead = body.get("number")
     response_post = {"status_code": None, "response":None}
 
     headers = {
