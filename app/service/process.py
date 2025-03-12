@@ -26,7 +26,8 @@ def process_webhook_data(data: dict):
         message_id = data["data"]["key"]["id"]
         message_type = data["data"]["messageType"]
         message_content = processar_mensagem(data, ia_name, message_id, message_type, ia_infos)
-
+        if not message_content:
+            return
         # Atualizar com novas infos no banco de dados
         lead_name = data['data']['pushName']
         lead_phone = data["data"]["key"]["remoteJid"].split('@')[0]
@@ -55,7 +56,7 @@ def process_webhook_data(data: dict):
             response_lead = llm.generate_response(message_content, historico)
             if not response_lead:
                 raise(Exception("Erro ao gerar resposta da llm"))
-
+            
             # Tratar mensagem da IA
             list_messages_to_send = quebrar_mensagens(response_lead)
             if not list_messages_to_send:
@@ -119,6 +120,9 @@ def processar_mensagem(data, instance, message_id, message_type, ia_infos):
         print("Documento identificado!")
         type_file = data.get("data").get("message").get("documentWithCaptionMessage").get("message").get("documentMessage").get("mimetype").split("/")[1]
         return processar_documento(instance, message_id, type_file, ia_infos), type_file
+    elif message_type == "reactionMessage":
+        print(f"Usuario apenas reagiu")
+        return ""
     else:
         print(f"Tipo de mensagem não identificada: {message_type} retornando...")
-        return "Mensagem não odentificada"
+        return "Mensagem não identificada, avise para o usuário enviar outra mensagem pois a atual não quer aparecer"
