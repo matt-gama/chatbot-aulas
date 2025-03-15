@@ -82,7 +82,7 @@ def process_webhook_data(data: dict):
                     configs_audio = ia_infos.ia_config.credentials_elevenlabs
 
                     if not configs_audio:
-                        raise("Nenhuma configuração cadastrada na elevenlabs")
+                        raise("Nenhuma configuração cadastrada na elevenlabsss")
 
                     api_key_elevenlabs = configs_audio.get("api_key_elevenlabs")
                     if not api_key_elevenlabs:
