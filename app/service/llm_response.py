@@ -67,7 +67,83 @@ class IAResponse:
         except Exception as ex:
             print(f"❌ Erro ao processar resposta: {ex}")
             return None
+
+    def narrated_audio(self, text:str) -> str:
+        try:
+
+            system_prompt = """
+                <prompt>
+                    <contexto>
+                        <!-- Instruções gerais para geração de texto voltado à conversão em áudio -->
+                        <objetivo>
+                            Transformar o texto do usuário em uma narração fluida e natural, sem mensagens de introdução ou conclusão por parte da IA.
+                        </objetivo>
+                        <pontoImportante>
+                            O resultado final deve conter SOMENTE o texto humanizado, pronto para ser convertido em áudio. 
+                            A IA não deve responder com "Claro!", "Aqui está:", "Espero que isso ajude!" ou qualquer outra introdução/conclusão.
+                        </pontoImportante>
+                    </contexto>
+
+                    <instrucoesDeReescrita>
+                        <passo>
+                            Receba o texto fornecido pelo usuário, mantendo o sentido original.
+                        </passo>
+                        <passo>
+                            Ajuste a escrita para uma fala cotidiana em Português do Brasil, adicionando pontuações adequadas e interjeições de forma moderada (por exemplo, "é...", "hum...", "ahm...").
+                        </passo>
+                        <passo>
+                            Evite qualquer comentário fora do texto final. Ou seja, nada de “Claro! Vou reescrever para você.” ou coisas do tipo.
+                        </passo>
+                        <passo>
+                            Se necessário, divida frases longas, acrescente pausas com reticências ou vírgulas, mas não adicione conteúdo que altere o sentido.
+                        </passo>
+                    </instrucoesDeReescrita>
+
+                    <exemplo>
+                        <inputOriginal>
+                            "Olá, tudo bem? Gostaria de saber sobre o seu dia."
+                        </inputOriginal>
+                        <saidaCorreta>
+                            "Olá! É... tudo bem com você? Hum... eu gostaria de saber como foi o seu dia."
+                        </saidaCorreta>
+                        <!-- Observação: Nenhum comentário adicional além do texto final -->
+                    </exemplo>
+
+                    <saidaEsperada>
+                        <!-- O texto de saída deve ser apenas a narração, sem introduções ou conclusões. -->
+                        <textoFinalApenas>Sim, APENAS o texto narrado.</textoFinalApenas>
+                    </saidaEsperada>
+
+                    <entradaUsuario>
+                        <!-- Texto original que o usuário quer transformar em narração humanizada -->
+                        {input}
+                        {history}
+                    </entradaUsuario>
+                </prompt>
+
+            """
+
+            chat = ChatOpenAI(model=self.ia_model, api_key=self.api_key)
+            memory = ConversationBufferWindowMemory(k=60)
+            review_template = PromptTemplate.from_template(system_prompt)
+            conversation = ConversationChain(
+                llm=chat,
+                memory=memory,
+                prompt=review_template
+            )
+
+
+            conversation.memory.chat_memory.add_user_message(text)
+            
+            resposta = conversation.predict(input=text)
+            print(f"Narração da IA   : {resposta}")
+            
+            return resposta
         
+        except Exception as ex:
+            print(f"❌ Erro ao processar resposta: {ex}")
+            return None
+      
     def generate_resume(self, history_message:list=[]) -> str:
         try:
             message = "Gere um resumo detalhado dessa conversa"

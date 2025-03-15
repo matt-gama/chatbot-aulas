@@ -1,10 +1,10 @@
-import time
+import random
 from ..database.manipulations import ia_manipulations, lead_manioulations
 from app.apis.evolution import *
 from app.service.llm_response import IAResponse
 from app.service.quebra_mensagens import quebrar_mensagens, calculate_typing_delay
 from app.service.queue_manager import get_phone_lock
-
+from app.apis.elevenlabs import ElevenlabsStrategy
 
 def process_webhook_data(data: dict):
     """
@@ -31,21 +31,32 @@ def process_webhook_data(data: dict):
         # Atualizar com novas infos no banco de dados
         lead_name = data['data']['pushName']
         lead_phone = data["data"]["key"]["remoteJid"].split('@')[0]
+        unique_token = f"{ia_infos.token_ia}_{lead_phone}"
         # Obtém o lock para o lead_phone e o adquire
         lock = get_phone_lock(lead_phone)
+        
         with lock:
             message_atual_lead = {
                 "role": "user",
                 "name": lead_name,
                 "content":message_content
             }
-            lead_db = lead_manioulations.filter_lead(lead_phone, message_atual_lead)
+            unique_token = f"{ia_infos.token_ia}_{lead_phone}"
+            
+            lead_db = lead_manioulations.filter_lead(unique_token, message_atual_lead)
             if not lead_db:
-                lead_db = lead_manioulations.new_lead(ia_infos.id, lead_name, lead_phone, [message_atual_lead])
+                lead_db = lead_manioulations.new_lead(ia_infos.id, lead_name, lead_phone, [message_atual_lead], unique_token)
+
+            if lead_db.bloqueado == False:
+                raise(Exception(f"Lead {lead_db.unique_token} estava bloqueado no banco de dados interceptando mensagem..."))
 
             # Gerando resposta com LLM
             historico = lead_db.message
             resume_lead = lead_db.resume
+
+            if not ia_infos.ia_config:
+                raise(Exception(f"Nenhuma configuração para a IA {ia_infos.id}"))
+            
             api_key = ia_infos.ia_config.credentials.get("api_key")
             ai_model = ia_infos.ia_config.credentials.get("ai_model", "")
             system_prompt = ia_infos.active_prompt
@@ -57,18 +68,59 @@ def process_webhook_data(data: dict):
             if not response_lead:
                 raise(Exception("Erro ao gerar resposta da llm"))
             
-            # Tratar mensagem da IA
-            list_messages_to_send = quebrar_mensagens(response_lead)
-            if not list_messages_to_send:
-                list_messages_to_send = [response_lead]
+            type_of_send = "text"
+            # Verifica se precisa enviar audio
+            try:
+                probabilidade_audio = ia_infos.ia_config.probabilidade_audio
+                if probabilidade_audio != 0:
+                    print(f"Probabilidade de áudio configurada [{probabilidade_audio}]")
+                else:
+                    probabilidade_audio = 0
 
-            # Enviando mensagem para o lead
-            for msg in list_messages_to_send:
-                delay = calculate_typing_delay(msg)
-                print(f"DELAY: {delay}")
-                response_canal = send_message(ia_name, lead_phone, msg, delay)
+                if probabilidade_audio > 0 and probabilidade_audio >= random.randint(1, 100):
+                    type_of_send = "audio"
+                    configs_audio = ia_infos.ia_config.credentials_elevenlabs
+
+                    if not configs_audio:
+                        raise("Nenhuma configuração cadastrada na elevenlabsss")
+
+                    api_key_elevenlabs = configs_audio.get("api_key_elevenlabs")
+                    if not api_key_elevenlabs:
+                        raise("Api key da elevenlabs não foi configurada")
+                    
+                    id_voz = configs_audio.get("audio_id", "")
+
+                    audio_narrado = llm.narrated_audio(response_lead)
+                    elevenvals_api = ElevenlabsStrategy(api_key_elevenlabs, id_voz)
+
+                    audio_binary = elevenvals_api.generate_audio_narrated(audio_narrado)
+                    if not audio_binary:
+                        raise("Erro ao gerar o binário do audio")
+
+            except Exception as ex:
+                print(f"Erro no processo enviando manual {ex}")
+                type_of_send = "text"
+
+            instance = f"{ia_name}_{ia_infos.user.id}"
+
+            if type_of_send == "text":
+                # Tratar mensagem da IA
+                list_messages_to_send = quebrar_mensagens(response_lead)
+                if not list_messages_to_send:
+                    list_messages_to_send = [response_lead]
+
+                # Enviando mensagem para o lead
+                for msg in list_messages_to_send:
+                    delay = calculate_typing_delay(msg)
+                    print(f"DELAY: {delay}")
+                    response_canal = send_message(instance, lead_phone, msg, delay)
+                    if response_canal.get("status_code") not in [200, 201]:
+                        raise(Exception(f"Erro > {response_canal} ao enviar mensagem ao lead > {msg}"))
+                    
+            elif type_of_send == "audio":
+                response_canal = send_message_audio(instance, lead_phone, audio_binary)
                 if response_canal.get("status_code") not in [200, 201]:
-                    raise(Exception(f"Erro ao enviar mensagem ao lead > {msg}"))
+                    raise(Exception(f"Erro ao enviar mensagem ao lead > {response_canal}"))
 
             # Verificar quantidade de interações
             resumo = None
@@ -96,7 +148,7 @@ def process_webhook_data(data: dict):
             if not lead_updated:
                 raise(Exception(f"Ocorreu algum problema ao atualizar lead : {lead_db.id}"))
             
-            print(f"SUCESSO AO PROCESSAR LEAD {lead_db.phone}")
+            print(f"SUCESSO AO PROCESSAR LEAD {lead_db.unique_token}")
 
     except Exception as ex:
         print(f"ERROR IN PROCESS : {ex}")

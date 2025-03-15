@@ -145,6 +145,18 @@ def send_message(instance:str, lead_phone:str, message:str, delay:int) -> dict:
     data = post_request(url, body)
     return data
 
+def send_message_audio(instance:str, lead_phone:str, file_data:str) -> dict:
+    url = host+'message/sendWhatsAppAudio/'+instance
+
+    body = {
+        "number": lead_phone,
+        "audio": file_data,
+        "delay": 0,
+    }
+    
+    data = post_request(url, body)
+    return data
+
 def post_request(url:str, body:dict, max_retries:int=5, wait_seconds:int=5) -> dict:
     # Inicializando variáveis
     attempt = 0
@@ -175,7 +187,7 @@ def post_request(url:str, body:dict, max_retries:int=5, wait_seconds:int=5) -> d
             return response_post
 
         if attempt < max_retries:
-            print(f"Aguardando {wait_seconds} segundos antes de tentar novamente...")
+            print(f"Erro: {response.text} Aguardando {wait_seconds} segundos antes de tentar novamente...")
             time.sleep(wait_seconds)  # Pausa antes da próxima tentativa
 
     return response_post
