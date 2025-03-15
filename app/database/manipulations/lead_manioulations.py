@@ -3,15 +3,15 @@ from ..connection import init_db
 
 
 
-def filter_lead(phone:str, message:list) -> Lead:
+def filter_lead(unique_token:str, message:list) -> Lead:
     db = init_db()
     if not db:
         raise(Exception("Não consegui conectar com database"))
     
     try:
-        lead = db.query(Lead).filter(Lead.phone == phone).first()
+        lead = db.query(Lead).filter(Lead.unique_token == unique_token).first()
         if not lead:
-            print(f"Nenhum Lead encontrada com esse telefone {phone}")
+            print(f"Nenhum Lead encontrada com esse unique_token {unique_token}")
             return None
         
         historico = lead.message
@@ -74,7 +74,7 @@ def update_lead(lead_id:int, message:list, resumo:str) -> bool:
 
     return False
 
-def new_lead(ia_id:int, name:str, phone:str, message:list) -> Lead:
+def new_lead(ia_id:int, name:str, phone:str, message:list, unique_token:str) -> Lead:
     db = init_db()
     if not db:
         raise(Exception("Não consegui conectar com database"))
@@ -84,7 +84,8 @@ def new_lead(ia_id:int, name:str, phone:str, message:list) -> Lead:
             ia_id = int(ia_id),
             phone=phone,
             name = name,
-            message = message
+            message = message,
+            unique_token = unique_token
         )
 
         db.add(lead)

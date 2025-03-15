@@ -20,4 +20,5 @@ def decrypt_data(encrypted_data: str) -> dict:
     """
     decrypted_bytes = fernet.decrypt(encrypted_data.encode())
     data = json.loads(decrypted_bytes.decode())
+
     return data
