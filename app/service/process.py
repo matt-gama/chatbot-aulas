@@ -101,8 +101,6 @@ def process_webhook_data(data: dict):
                 print(f"Erro no processo enviando manual {ex}")
                 type_of_send = "text"
 
-            instance = f"{ia_name}_{ia_infos.user.id}"
-
             if type_of_send == "text":
                 # Tratar mensagem da IA
                 list_messages_to_send = quebrar_mensagens(response_lead)
@@ -113,12 +111,12 @@ def process_webhook_data(data: dict):
                 for msg in list_messages_to_send:
                     delay = calculate_typing_delay(msg)
                     print(f"DELAY: {delay}")
-                    response_canal = send_message(instance, lead_phone, msg, delay)
+                    response_canal = send_message(ia_name, lead_phone, msg, delay)
                     if response_canal.get("status_code") not in [200, 201]:
                         raise(Exception(f"Erro > {response_canal} ao enviar mensagem ao lead > {msg}"))
                     
             elif type_of_send == "audio":
-                response_canal = send_message_audio(instance, lead_phone, audio_binary)
+                response_canal = send_message_audio(ia_name, lead_phone, audio_binary)
                 if response_canal.get("status_code") not in [200, 201]:
                     raise(Exception(f"Erro ao enviar mensagem ao lead > {response_canal}"))
 
