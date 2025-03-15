@@ -114,7 +114,6 @@ def processar_audio(instance, message_id, ia_infos) -> str:
                 audio_transcript = f"Audio enviado : {response.text}"
         else:
             raise(Exception(f"Ocorreu algum erro ao coletar dados da api status code : {data.get("status_code")}"))
-            
     except Exception as ex:
         print(f"Erro ao transcrever audio : {ex}")
 
@@ -138,14 +137,9 @@ def send_message(instance:str, lead_phone:str, message:str, delay:int) -> dict:
     url = host+'message/sendText/'+instance
     body = {
         "number": lead_phone,
-        "options": {
-            "delay": int(delay)*1000,
-            "presence": "composing",
-            "linkPreview": False
-        },
-        "textMessage": {
-            "text": str(message)
-        }
+        "text": str(message),
+        "delay": int(delay)*1000,
+        "linkPreview": True
     }
     
     data = post_request(url, body)
